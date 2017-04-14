@@ -1,0 +1,7 @@
+*.o
+*~
+*.bak
+*.zip
+*.jar
+*.class
+a.out
