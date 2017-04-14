@@ -1,0 +1,6 @@
+hello.c is a file that contains the 'hello, world' code
+myhello is the executable file
+
+I used the following command to compile:
+
+gcc -Wall -Wextra -Wpedantic -Werror -std=c99 hello.c -o myhello
