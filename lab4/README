@@ -1,0 +1,9 @@
+This program demonstrates how to correctly access and update
+a shared variable across multiple concurrent threads.
+It uses a mutex lock to control a critical region of code
+that increments the shared variable. The use of the mutex lock
+eliminates the race condition that is present without it.
+
+The program creates one executable called increment and takes one
+optional argument -n that specifies the number of concurrent
+threads to run. Each thread executes 1000 shared variable increments.
