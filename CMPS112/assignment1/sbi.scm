@@ -128,6 +128,23 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(define (scan-labels program) ;; Check for labels and insert in label hash
+  (map (lambda (line)
+         (when (and (not (null? line)) (>= (length line) 2)
+                    (not (null? (cdr line))) (symbol? (cadr line)))
+               (hash-set! labels-hash (cadr line) (caddr line))))
+       program) ;; If not empty, and contains a symbol, store in hash
+)
+
+(define (interpret-program filename program)
+    (scan-labels program) ;; Scan for labels first
+    (map (lambda (line) 
+	    (if (not (pair? line))
+                (interpret-program filename cdr(line))
+                (hash-ref *label-table*)))
+        program)
+)
+
 (define (evaluate-expression input)
     (cond
         ((string? input) input) ;; Check if input is a string (returns #t or #f)                                                            STRING
