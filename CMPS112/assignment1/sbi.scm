@@ -121,12 +121,15 @@
 
 ;; Check for labels and insert in label hash
 (define (scan-labels program)
-  (map (lambda (line)
-         (when (and (not (null? line)) (>= (length line) 2)
-                    (not (null? (cdr line))) (symbol? (cadr line)))
-               (hash-set! labels-hash (cadr line) (caddr line))))
-       program) ;; If not empty, and contains a symbol, store in hash
-)
+    (map (lambda (line)
+            (when (not (null? line))
+                (when (or (= 3 (length line))
+                    (and (= 2 (length line))
+                        (not (list? (cadr line)))))
+                    (hash-set! *label-table* (cadr line ) (cddr line))
+                    (hash-set! *array-table* (cadr line) (- (car line) 1)))))
+          program)
+ )
 
 ;; Recursively go through and find statements in hash
 (define (interpret-program filename program)
@@ -186,21 +189,21 @@
 
 ;; Create an array of a certain size
 (define (dimFunc input)
-  (let((arr (make-vector (evaluate-expression (cadadr input)) (caadr input))))
-  (symbol-put! (caadr input) (+ (evaluate-expression (cadadr input)) 1))
+  (let((arr (vector (evaluate-expression (cadadr input)) (caadr input))))
+  (function-put! (caadr input) `(+ (evaluate-expression (cadadr input)) 1))
 ))
 
 ;; Input
 (define (inputFunc input)
-  (symbol-put! 'count 0)
+  (function-put! 'count 0)
   (if (null? (car input))
-    (symbol-put! 'count -1)
+    (function-put! 'count -1)
     (begin
-    (symbol-put! 'count (inputFunc input 0)))))
+    (function-put! 'count (inputFunc input 0)))))
 
 ;; Let
 (define (letFunc input)
-  (symbol-put! (cadr input) (evaluate-expression (caddr input)))
+  (function-put! (cadr input) (evaluate-expression (caddr input)))
 )
 
 ;; Execute the lines based on the functions
@@ -211,7 +214,7 @@
          (parse-list program(+ lineNum 1)))
 
     (when (eq? (car inst) 'goto) ;; Goto
-     (parse-list program (hash-ref *addr-table* (cadr inst))))
+     (parse-list program (hash-ref *array-table* (cadr inst))))
    
     (when (eq? (car inst) 'let) ;: Let
        (letFunc inst)
@@ -220,7 +223,7 @@
     (when (eq? (car inst) 'if) ;; If
         (when (evaluate-expression  (cadr inst))
             (parse-list  program 
-            (hash-ref *addr-table* (caddr inst)))
+            (hash-ref *array-table* (caddr inst)))
             ))
 
     (when (eq? (car inst) 'dim) ;; Dim 
