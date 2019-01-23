@@ -139,7 +139,7 @@
 (define (interpret-program filename program)
     (scan-labels program) ;; Scan for labels first
     (map (lambda (line) 
-	    (if (not (pair? line))
+            (if (not (pair? line))
                 (interpret-program filename cdr(line))
                 (hash-ref *label-table*)))
         program)
@@ -178,7 +178,7 @@
          (printf "token=~a~n" token)
          (when (not (eq? token eof)) (dump-stdin))))
 
-;; Writes the program out line by line
+;; Writes the header out
 (define (write-program-by-line filename program)
     (printf "==================================================~n")
     (printf "~a: ~s~n" *run-file* filename)
@@ -187,13 +187,94 @@
     (for-each (lambda (line) (printf "~s~n" line)) program)
     (printf ")~n"))
 
-;; Exit if list is null, otherwise read input file and print it line by line
+
+
+
+
+
+(define (printFunc input) ;print function
+ (map (lambda (x) (display (evaluate-expression x))) input)
+  (newline)
+)
+
+(define (dimFunc input) ; makes an array with a given size
+  (let((arr (make-vector (evaluate-expression (cadadr input)) (caadr input))))
+  (symbol-put! (caadr input) (+ (evaluate-expression (cadadr input)) 1))
+))
+
+
+(define (inputFunc input) ;input attempt
+  (symbol-put! 'count 0)
+  (if (null? (car input))
+    (symbol-put! 'count -1)
+    (begin
+    (symbol-put! 'count (inputFunc input 0)))))
+
+
+(define (letFunc input)
+  (symbol-put! (cadr input) (evaluate-expression (caddr input)))
+)
+
+(define (exec-line inst program lineNum)
+
+    (when (eq? (car inst) 'print) ;print case 
+         (printFunc (cdr inst))
+         (parse-prog-list program(+ lineNum 1)))
+
+    (when (eq? (car inst) 'goto) ;goto case
+     (parse-prog-list program (hash-ref *addr-table* (cadr inst))))
+   
+    (when (eq? (car inst) 'let) ;let case
+       (letFunc inst)
+       (parse-prog-list program(+ lineNum 1)))
+
+    (when (eq? (car inst) 'if) ;if case
+        (when (evaluate-expression  (cadr inst))
+            (parse-prog-list  program 
+            (hash-ref *addr-table* (caddr inst)))
+            ))
+
+    (when (eq? (car inst) 'dim) ;dim case 
+       (dimFunc inst)
+       (parse-prog-list program(+ lineNum 1)))
+
+    (when (eq? (car inst) 'input) ;input case (not working)
+    ((inputFunc inst)
+       (parse-prog-list program(+ lineNum 1)) 
+    ))  
+)
+
+;; Parses the program recursively
+(define (parse-prog-list program lineNum)
+   (when (> (length program) lineNum)
+    (let((line (list-ref program lineNum)))
+    (cond
+      ((= (length line) 3)
+       (set! line (cddr line))
+       (exec-line (car line) program lineNum))
+      ((and (= (length line) 2) (list? (cadr line)))
+       (set! line (cdr line))
+       (exec-line (car line) program lineNum))
+      (else 
+        (parse-prog-list program (+ lineNum 1)))
+    )))
+)
+     
+     
+     
+     
+;; Exit if list is null, otherwise parse and interpret and stuff              
 (define (main arglist)
     (if (or (null? arglist) (not (null? (cdr arglist))))
         (usage-exit)
         (let* ((sbprogfile (car arglist))
-               (program (readlist-from-inputfile sbprogfile)))
-              (write-program-by-line sbprogfile program))))
+              (program (readlist-from-inputfile sbprogfile)))
+              (scan-labels program)
+              (parse-prog-list program 0)
+        )
+    )
+)
+            
 
 ;; Print the terminal port, then call the main function
 (printf "terminal-port? *stdin* = ~s~n" (terminal-port? *stdin*))
@@ -201,85 +282,4 @@
     (main (vector->list (current-command-line-arguments)))
     (printf "sbi.scm: interactive mode~n"))
     
-    
-    
-    
-    
-    
-    
-;; #!/afs/cats.ucsc.edu/courses/cmps112-wm/usr/racket/bin/mzscheme -qr
-;; ;; $Id: symbols.scm,v 1.2 2014-10-31 17:35:08-07 - - $
-;; 
-;; ;;
-;; ;; NAME
-;; ;;    symbols - illustrate use of hash table for a symbol table
-;; ;;
-;; ;; DESCRIPTION
-;; ;;    Put some entries into the symbol table and then use them.
-;; ;;
-;; 
-;; ;;
-;; ;; Create the symbol table and initialize it.
-;; ;;
-;; 
-;; (define *symbol-table* (make-hash))
-;; (define (symbol-get key)
-;;         (hash-ref *symbol-table* key))
-;; (define (symbol-put! key value)
-;;         (hash-set! *symbol-table* key value))
-;; 
-;; (for-each
-;;     (lambda (pair)
-;;             (symbol-put! (car pair) (cadr pair)))
-;;     `(
-;; 
-;;         (log10_2 0.301029995663981195213738894724493026768189881)
-;;         (sqrt_2  1.414213562373095048801688724209698078569671875)
-;;         (e       2.718281828459045235360287471352662497757247093)
-;;         (pi      3.141592653589793238462643383279502884197169399)
-;;         (div     ,(lambda (x y) (floor (/ x y))))
-;;         (log10   ,(lambda (x) (/ (log x) (log 10.0))))
-;;         (mod     ,(lambda (x y) (- x (* (div x y) y))))
-;;         (quot    ,(lambda (x y) (truncate (/ x y))))
-;;         (rem     ,(lambda (x y) (- x (* (quot x y) y))))
-;;         (+       ,+)
-;;         (^       ,expt)
-;;         (ceil    ,ceiling)
-;;         (exp     ,exp)
-;;         (floor   ,floor)
-;;         (log     ,log)
-;;         (sqrt    ,sqrt)
-;; 
-;;      ))
-;; 
-;; ;; 
-;; ;; What category of object is this?
-;; ;;
-;; 
-;; (define (what-kind value)
-;;     (cond ((real? value) 'real)
-;;           ((vector? value) 'vector)
-;;           ((procedure? value) 'procedure)
-;;           (else 'other)))
-;; 
-;; ;;
-;; ;; Main function.
-;; ;;
-;; 
-;; (define (main argvlist)
-;;     (symbol-put! 'n (expt 2.0 32.0))
-;;     (symbol-put! 'a (make-vector 10 0.0))
-;;     (vector-set! (symbol-get 'a) 3 (symbol-get 'pi))
-;;     (printf "2 ^ 16 = ~s~n" ((symbol-get '^) 2.0 16.0))
-;;     (printf "log 2 = ~s~n" ((symbol-get 'log) 2.0))
-;;     (printf "log10 2 = ~s~n" ((symbol-get 'log10) 2.0))
-;;     
-;;     (newline)
-;;     (printf "*symbol-table*:~n")
-;;     (hash-for-each *symbol-table*
-;;         (lambda (key value)
-;;                 (printf "~s : ~s = ~s~n" key (what-kind value) value))
-;;     ))
-;; 
-;; (main '())
-;;     
+        
