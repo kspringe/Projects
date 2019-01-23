@@ -199,7 +199,7 @@
   (if (null? (car input))
     (function-put! 'count -1)
     (begin
-    (function-put! 'count (inputFunc input 0)))))
+    (function-put! 'count (inputFunc input) 0))))
 
 ;; Let
 (define (letFunc input)
