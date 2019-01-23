@@ -152,8 +152,8 @@
         ((hash-has-key? *function-table* input) ;; Check if *function-table* has a key for it (returns #t or #f)
             (hash-ref *function-table* input)) ;; If #t, get the key                                                                        FUNCTION
         ((pair? input) ;; Check if input is a pair (returns #t or #f)
-            (if (has-hash-key? *function-table* (car input)) ;; If #t, check if first element has a key in *function-table*
-                (let((car (hash-ref *funtion-table* (car input)))) ;; The key of the first in the list
+            (if (hash-has-key? *function-table* (car input)) ;; If #t, check if first element has a key in *function-table*
+                (let((car (hash-ref *function-table* (car input)))) ;; The key of the first in the list
                     (cond
                         ((procedure? car) ;; Check if the first element is a procedure (returns #t or #f)
                             (apply car (map (lambda (x) (evaluate-expression x)) (cdr input)))) ;; If #t, apply procedure to the whole list recursively
