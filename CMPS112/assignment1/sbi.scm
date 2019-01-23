@@ -9,9 +9,7 @@
 ;;
 ;; DESCRIPTION
 ;;    The file mentioned in argv[1] is read and assumed to be an SBIR
-;;    program, which is the executed.  Currently it is only printed.
-;;
-;; Working on creating hash tables . . .
+;;    program, which is then executed.
 ;;
 
 ;; Define the ports
@@ -26,8 +24,6 @@
             (split-path (find-system-path 'run-file))))
         (path->string basepath))
 )
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Holds all functions
 (define *function-table* (make-hash))
@@ -102,9 +98,7 @@
 ;; Holds addresses of each line
 (define *label-table* (make-hash))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; Displays the list in stderr
+;; Displays list in stderr and exits
 (define (die list)
     (for-each (lambda (item) (display item *stderr*)) list)
     (newline *stderr*)
@@ -125,10 +119,8 @@
                   (close-input-port inputfile)
                          program))))
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(define (scan-labels program) ;; Check for labels and insert in label hash
+;; Check for labels and insert in label hash
+(define (scan-labels program)
   (map (lambda (line)
          (when (and (not (null? line)) (>= (length line) 2)
                     (not (null? (cdr line))) (symbol? (cadr line)))
@@ -136,6 +128,7 @@
        program) ;; If not empty, and contains a symbol, store in hash
 )
 
+;; Recursively go through and find statements in hash
 (define (interpret-program filename program)
     (scan-labels program) ;; Scan for labels first
     (map (lambda (line) 
@@ -145,6 +138,7 @@
         program)
 )
 
+;; Look up the function in the tables, check the arguments, and apply function to list of results
 (define (evaluate-expression input)
     (cond
         ((string? input) input) ;; Check if input is a string (returns #t or #f)                                                            STRING
@@ -165,14 +159,11 @@
                             (die "Issue with function-table!."))))            
                 ;; There is no key in *function-table* that matches first element
                 (die (list "Error: " 
-                    (car input) " does not exist!\n")))) ;;                                                                                 LIST
+                    (car input) " does not exist!\n")))) ;;                                                                                 PAIR
     )
 )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-;; If token is not eof, print?????
+;; If token is not eof, keep reading
 (define (dump-stdin)
     (let ((token (read)))
          (printf "token=~a~n" token)
@@ -187,81 +178,76 @@
     (for-each (lambda (line) (printf "~s~n" line)) program)
     (printf ")~n"))
 
-
-
-
-
-
-(define (printFunc input) ;print function
+;; Print
+(define (printFunc input)
  (map (lambda (x) (display (evaluate-expression x))) input)
   (newline)
 )
 
-(define (dimFunc input) ; makes an array with a given size
+;; Create an array of a certain size
+(define (dimFunc input)
   (let((arr (make-vector (evaluate-expression (cadadr input)) (caadr input))))
   (symbol-put! (caadr input) (+ (evaluate-expression (cadadr input)) 1))
 ))
 
-
-(define (inputFunc input) ;input attempt
+;; Input
+(define (inputFunc input)
   (symbol-put! 'count 0)
   (if (null? (car input))
     (symbol-put! 'count -1)
     (begin
     (symbol-put! 'count (inputFunc input 0)))))
 
-
+;; Let
 (define (letFunc input)
   (symbol-put! (cadr input) (evaluate-expression (caddr input)))
 )
 
-(define (exec-line inst program lineNum)
+;; Execute the lines based on the functions
+(define (execute-function inst program lineNum)
 
-    (when (eq? (car inst) 'print) ;print case 
+    (when (eq? (car inst) 'print) ;; Print
          (printFunc (cdr inst))
-         (parse-prog-list program(+ lineNum 1)))
+         (parse-list program(+ lineNum 1)))
 
-    (when (eq? (car inst) 'goto) ;goto case
-     (parse-prog-list program (hash-ref *addr-table* (cadr inst))))
+    (when (eq? (car inst) 'goto) ;; Goto
+     (parse-list program (hash-ref *addr-table* (cadr inst))))
    
-    (when (eq? (car inst) 'let) ;let case
+    (when (eq? (car inst) 'let) ;: Let
        (letFunc inst)
-       (parse-prog-list program(+ lineNum 1)))
+       (parse-list program(+ lineNum 1)))
 
-    (when (eq? (car inst) 'if) ;if case
+    (when (eq? (car inst) 'if) ;; If
         (when (evaluate-expression  (cadr inst))
-            (parse-prog-list  program 
+            (parse-list  program 
             (hash-ref *addr-table* (caddr inst)))
             ))
 
-    (when (eq? (car inst) 'dim) ;dim case 
+    (when (eq? (car inst) 'dim) ;; Dim 
        (dimFunc inst)
-       (parse-prog-list program(+ lineNum 1)))
+       (parse-list program(+ lineNum 1)))
 
-    (when (eq? (car inst) 'input) ;input case (not working)
+    (when (eq? (car inst) 'input) ;; Input
     ((inputFunc inst)
-       (parse-prog-list program(+ lineNum 1)) 
+       (parse-list program(+ lineNum 1)) 
     ))  
 )
 
 ;; Parses the program recursively
-(define (parse-prog-list program lineNum)
+(define (parse-list program lineNum)
    (when (> (length program) lineNum)
     (let((line (list-ref program lineNum)))
     (cond
       ((= (length line) 3)
        (set! line (cddr line))
-       (exec-line (car line) program lineNum))
+       (execute-function (car line) program lineNum))
       ((and (= (length line) 2) (list? (cadr line)))
        (set! line (cdr line))
-       (exec-line (car line) program lineNum))
+       (execute-function (car line) program lineNum))
       (else 
-        (parse-prog-list program (+ lineNum 1)))
+        (parse-list program (+ lineNum 1)))
     )))
 )
-     
-     
-     
      
 ;; Exit if list is null, otherwise parse and interpret and stuff              
 (define (main arglist)
@@ -270,12 +256,11 @@
         (let* ((sbprogfile (car arglist))
               (program (readlist-from-inputfile sbprogfile)))
               (scan-labels program)
-              (parse-prog-list program 0)
+              (parse-list program 0)
         )
     )
 )
             
-
 ;; Print the terminal port, then call the main function
 (printf "terminal-port? *stdin* = ~s~n" (terminal-port? *stdin*))
 (if (terminal-port? *stdin*)
