@@ -38,7 +38,7 @@ let interp_input (memref_list : Absyn.memref list) =
     in List.iter input_number memref_list
 
 let rec interp_stmt (stmt : Absyn.stmt) = match stmt with
-    | Dim (ident, expr) -> unimpl "Dim (ident, expr)"
+    | Dim (ident, expr) -> Hashtbl.add Tables.array_table ident (Array.make (int_of_float (eval_expr expr)) (eval_expr expr))
     | Let (memref, expr) -> interp_let memref expr
     | Goto label -> unimpl "Goto label"
     | If (expr, label) -> unimpl "If (expr, label)"
