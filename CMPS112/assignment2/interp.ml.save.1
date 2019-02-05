@@ -9,14 +9,11 @@ let want_dump = ref false
 
 let rec eval_expr (expr : Absyn.expr) : float = match expr with
     | Number number -> number
-    | Memref memref -> eval_memref memref
-    | Unary (oper, expr) -> ((eval_unary oper) (eval_expr expr))
+    | Memref memref -> unimpl "eval_expr Memref"
+    | Unary (oper, expr) -> unimpl "eval_expr Unary"
     | Binary (oper, expr1, expr2) -> ((eval_binary oper) (eval_expr expr1) (eval_expr expr2))
 and eval_binary (oper) = Hashtbl.find Tables.binary_fn_table oper
-and eval_unary (oper) = Hashtbl.find Tables.unary_fn_table oper
-and eval_memref (memref)  = match memref with
-    | Variable ident -> Hashtbl.find Tables.variable_table ident
-    | Arrayref (ident, expr) -> Array.get (Hashtbl.find Tables.array_table ident) (int_of_float(eval_expr expr))
+
 
 let interp_print (print_list : Absyn.printable list) =
     let print_item item =
@@ -37,16 +34,13 @@ let interp_input (memref_list : Absyn.memref list) =
              (print_string "End_of_file"; print_newline ())
     in List.iter input_number memref_list
 
-let rec interp_stmt (stmt : Absyn.stmt) = match stmt with
+let interp_stmt (stmt : Absyn.stmt) = match stmt with
     | Dim (ident, expr) -> unimpl "Dim (ident, expr)"
-    | Let (memref, expr) -> interp_let memref expr
+    | Let (memref, expr) -> Hashtbl.add Tables.variable_table (eval_expr expr) (eval_expr memref)
     | Goto label -> unimpl "Goto label"
     | If (expr, label) -> unimpl "If (expr, label)"
     | Print print_list -> interp_print print_list
     | Input memref_list -> interp_input memref_list
-and interp_let (memref : Absyn.memref) (expr : Absyn.expr) = match memref with
-    | Variable ident -> Hashtbl.add Tables.variable_table ident (eval_expr expr)
-    | Arrayref (ident, expr) -> Hashtbl.add Tables.array_table ident ((Hashtbl.find Tables.array_table ident))
 
 let rec interpret (program : Absyn.program) = match program with
     | [] -> ()

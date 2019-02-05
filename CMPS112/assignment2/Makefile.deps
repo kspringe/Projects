@@ -1,4 +1,4 @@
-# Generated: Mon Feb  4 15:40:22 PST 2019
+# Generated: Mon Feb  4 17:04:48 PST 2019
 absyn.cmi :
 etc.cmi :
 etc.cmo : etc.cmi
@@ -10,8 +10,8 @@ dumper.cmi : absyn.cmi
 dumper.cmo : absyn.cmi dumper.cmi
 dumper.cmx : absyn.cmi dumper.cmi
 interp.cmi : absyn.cmi
-interp.cmo : interp.cmi
-interp.cmx : interp.cmi
+interp.cmo : tables.cmi etc.cmi dumper.cmi absyn.cmi interp.cmi
+interp.cmx : tables.cmx etc.cmx dumper.cmx absyn.cmi interp.cmi
 main.cmo : scanner.cmo parser.cmi interp.cmi etc.cmi
 main.cmx : scanner.cmx parser.cmx interp.cmx etc.cmx
 dumper.cmi : absyn.cmi
